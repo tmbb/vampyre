@@ -8,6 +8,6 @@ defmodule Vampyre.HTML.Engine.CompilerTest do
 
   test "test #1" do
     assert render1(a: 4) == "4"
-    assert render2(dynamic: "abc") == "Static abc Static"
+    assert render2(dynamic: "abc") == "Static#1 abc Static#2"
   end
 end
