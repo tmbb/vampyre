@@ -1,1 +1,1 @@
-Static <%= @dynamic %> Static
+Static#1 <%= @dynamic %> Static#2
