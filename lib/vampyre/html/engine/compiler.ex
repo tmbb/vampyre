@@ -1,8 +1,8 @@
 defmodule Vampyre.HTML.Engine.Compiler do
   require Vampyre.HTML.Engine.Segment, as: Segment
-  alias Vampyre.HTML.Engine.Optimizer
   alias Vampyre.HTML.DefaultEngine
-  alias Vampyre.HTML.Engine.Compiler.{PreparedSegment, Escape, Group}
+  alias Vampyre.HTML.Engine.Optimizer
+  alias Vampyre.HTML.Engine.Compiler.{PreparedSegment, Escape}
   require EEx
 
   @cursor_prefix "tmp"
@@ -88,13 +88,15 @@ defmodule Vampyre.HTML.Engine.Compiler do
   end
 
   def compile_expanded(expanded_ast) do
+    optimized_ast = Optimizer.optimize(expanded_ast)
+
     {new_ast, _counter} =
-      Macro.postwalk(expanded_ast, 1, fn ast_node, counter ->
+      Macro.postwalk(optimized_ast, 1, fn ast_node, counter ->
         case ast_node do
           Segment.container() ->
             cursor = "#{@cursor_prefix}_#{counter}"
-            undead_node = compile_container(ast_node, cursor)
-            {undead_node, counter + 1}
+            vampyre_node = compile_container(ast_node, cursor)
+            {vampyre_node, counter + 1}
 
           other ->
             {other, counter}
@@ -104,11 +106,23 @@ defmodule Vampyre.HTML.Engine.Compiler do
     new_ast
   end
 
-  def compile(string, env) do
+  def compile_string(string, env) do
+    # Parse the template into a Vampyre container.
+    # The Vampyre container is, by design, a valid quoted expression.
     quoted = EEx.compile_string(string, engine: DefaultEngine)
+    # Now, we recursively expand the macros inside the container/quoted expression.
+    # Because the container is a valid quoted expression, we can use `Macro.prewalk/2`,
+    # which takes care of the irregularities in the Elixir AST
     expanded = Macro.prewalk(quoted, &Macro.expand(&1, env))
+    # Now that all undead containers have been expanded, we can compile and optimize
+    compile_expanded(expanded)
+  end
 
-    expanded
-    |> compile_expanded()
+  def compile_file(filename, env) do
+    # The steps are the same as in compile_string/2
+    quoted = EEx.compile_file(filename, engine: DefaultEngine)
+    require EEx
+    expanded = Macro.prewalk(quoted, &Macro.expand(&1, env))
+    compile_expanded(expanded)
   end
 end

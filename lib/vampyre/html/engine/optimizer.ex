@@ -16,13 +16,6 @@ defmodule Vampyre.HTML.Engine.Optimizer do
     merge_segments_helper(merged, rest)
   end
 
-  def merge_segments_helper(
-        Segment.static() = acc,
-        [Segment.support() = support_segment | rest]
-      ) do
-    [support_segment | merge_segments_helper(acc, rest)]
-  end
-
   def merge_segments_helper(current, [next | rest]) do
     [current | merge_segments_helper(next, rest)]
   end
@@ -32,7 +25,7 @@ defmodule Vampyre.HTML.Engine.Optimizer do
   end
 
   def optimize_inside_container(Segment.container() = segment) do
-    Segment.container(optimized_segments) = optimize_expr(segment)
+    Segment.container(optimized_segments) = optimize(segment)
 
     optimized_segments
     |> List.flatten()
@@ -40,18 +33,18 @@ defmodule Vampyre.HTML.Engine.Optimizer do
   end
 
   def optimize_inside_container(expr) do
-    optimize_expr(expr)
+    optimize(expr)
   end
 
   # TODO:
   # Try to replace this recursive implementation with somthing that uses `Macro.prewalk/2`.
-  def optimize_expr(Segment.dynamic(Segment.container() = container, _meta)) do
-    Segment.segment(optimized_segments, _meta) = optimize_expr(container)
+  def optimize(Segment.dynamic(Segment.container() = container, _meta)) do
+    Segment.container(optimized_segments, _meta) = optimize(container)
 
     optimized_segments
   end
 
-  def optimize_expr(Segment.container(segments, meta)) do
+  def optimize(Segment.container(segments, meta)) do
     non_optimized_segments = for segment <- segments, do: optimize_inside_container(segment)
 
     optimized_segments =
@@ -62,39 +55,30 @@ defmodule Vampyre.HTML.Engine.Optimizer do
     Segment.container(optimized_segments, meta)
   end
 
-  def optimize_expr(Segment.support() = segment) do
-    segment
-  end
+  # def optimize(Segment.support() = segment) do
+  #   segment
+  # end
 
   # Segments other than Segment.container()
-  def optimize_expr(segment) when Segment.is_segment(segment) do
-    Segment.segment(expr, _meta) = segment
-    Segment.update(segment, optimize_expr(expr))
+  def optimize(segment) when Segment.is_segment(segment) do
+    Segment.segment(_tag, expr, _meta) = segment
+    Segment.update(segment, optimize(expr))
   end
 
-  def optimize_expr(list) when is_list(list) do
-    for expr <- list, do: optimize_expr(expr)
+  def optimize(list) when is_list(list) do
+    for expr <- list, do: optimize(expr)
   end
 
-  def optimize_expr({a, b}) do
-    {optimize_expr(a), optimize_expr(b)}
+  def optimize({a, b}) do
+    {optimize(a), optimize(b)}
   end
 
-  def optimize_expr({f, meta, args}) do
-    {f, meta, optimize_expr(args)}
+  def optimize({f, meta, args}) do
+    {f, meta, optimize(args)}
   end
 
-  def optimize_expr(other) do
+  def optimize(other) do
     other
-  end
-
-  def macroexpand_template(template, env) do
-    Macro.prewalk(template, &Macro.expand(&1, env))
-  end
-
-  def optimize(Segment.container() = template, env) do
-    expanded = macroexpand_template(template, env)
-    optimize_expr(expanded)
   end
 
   @spec merge_binaries(list()) :: list()

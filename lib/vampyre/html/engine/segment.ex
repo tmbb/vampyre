@@ -1,5 +1,5 @@
 defmodule Vampyre.HTML.Engine.Segment do
-  @container_tag Vampyre.HTML.Engine.Segment.UndeadContainer
+  @container_tag Vampyre.HTML.Engine.Segment.Container
   @static_tag Vampyre.HTML.Engine.Segment.Segment.Static
   @dynamic_tag Vampyre.HTML.Engine.Segment.Segment.Dynamic
   @support_tag Vampyre.HTML.Engine.Segment.Support
@@ -24,12 +24,12 @@ defmodule Vampyre.HTML.Engine.Segment do
     {@container_tag, {reversed_segments, meta}}
   end
 
-  def update({@container_tag, {_contents, meta}}, contents) do
-    {@container_tag, {contents, meta}}
-  end
-
   def prepend_to_contents({@container_tag, {contents, meta}}, new) do
     {@container_tag, {[new | contents], meta}}
+  end
+
+  def update({tag, {_old_contents, meta}}, new_contents) do
+    {tag, {new_contents, meta}}
   end
 
   defmacro segment() do

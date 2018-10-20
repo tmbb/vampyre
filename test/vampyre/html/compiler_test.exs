@@ -1,6 +1,6 @@
 defmodule Vampyre.HTML.Engine.CompilerTest do
   use ExUnit.Case, async: true
-  alias Vampyre.HTML.Engine.Compiler
+
   import Defrenderer
 
   defrenderer(:render1, "test/templates/a.html.eex")
